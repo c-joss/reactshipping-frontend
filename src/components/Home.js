@@ -8,6 +8,9 @@ function Home() {
         <li>
           <Link to="/quote">Get a Quote</Link>
         </li>
+        <li>
+          <Link to="/booking">Request a Booking</Link>
+        </li>
       </ul>
     </>
   );
