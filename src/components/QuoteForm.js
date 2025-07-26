@@ -5,6 +5,10 @@ function QuoteForm() {
   const [portPairs, setPortPairs] = useState([]);
   const [containers, setContainers] = useState([]);
 
+  const [origin, setOrigin] = useState("");
+  const [destination, setDestination] = useState("");
+  const [containerId, setContainerId] = useState("");
+
   useEffect(() => {
     fetch(`${ProcessingInstruction.env.REACT_APP_API_URL}/containers`)
       .then((res) => res.json())
