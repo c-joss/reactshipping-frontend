@@ -30,11 +30,15 @@ function QuoteForm() {
     )
       .then((res) => res.json())
       .then((data) => {
+        const selectedContainer = containers.find((c) => c.id == containerId);
+
+        console.log("Selected container:", selectedContainer);
         navigate("/quote/result", {
           state: {
             origin,
             destination,
-            containerId: parseInt(containerId),
+            containerId,
+            containerType: selectedContainer?.type || "unknown",
             quote: data[0] || null,
           },
         });
@@ -79,7 +83,9 @@ function QuoteForm() {
       >
         <option value="">Select</option>
         {containers.map((c) => (
-          <option key={c.id}>{c.type}</option>
+          <option key={c.id} value={c.id}>
+            {c.type}
+          </option>
         ))}
       </select>
       <button type="submit">Get Quote</button>
