@@ -10,7 +10,7 @@ function QuoteForm() {
   const [containerId, setContainerId] = useState("");
 
   useEffect(() => {
-    fetch(`${ProcessingInstruction.env.REACT_APP_API_URL}/containers`)
+    fetch(`${process.env.REACT_APP_API_URL}/containers`)
       .then((res) => res.json())
       .then(setContainers);
   }, []);
@@ -53,9 +53,10 @@ function QuoteForm() {
       >
         <option value="">Select</option>
         {containers.map((c) => (
-          <option key={c}>{c}</option>
+          <option key={c.id}>{c.type}</option>
         ))}
       </select>
+      <button type="submit">Get Quote</button>
     </form>
   );
 }
