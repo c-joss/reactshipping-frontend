@@ -21,23 +21,30 @@ function QuoteForm() {
       .then(setContainers);
   }, []);
 
+  const navigate = useNavigate();
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    fetch(
+      `${process.env.REACT_APP_API_URL}/quotes?origin=${origin}&destination=${destination}&containerId=${containerId}`
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        navigate("/quote/result", {
+          state: {
+            origin,
+            destination,
+            containerId: parseInt(containerId),
+            quote: data[0] || null,
+          },
+        });
+      });
+  };
+
   const origins = [...new Set(portPairs.map((p) => p.load))];
   const destinations = portPairs
     .filter((p) => p.load === origin)
     .map((p) => p.destination);
-
-  const navigate = useNavigate();
-
-  function handleSubmit(e) {
-    e.preventDefault();
-    navigate("/quote/result", {
-      state: {
-        origin,
-        destination,
-        containerId: parseInt(containerId),
-      },
-    });
-  }
 
   return (
     <form onSubmit={handleSubmit}>
