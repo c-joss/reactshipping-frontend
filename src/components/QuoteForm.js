@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 function QuoteForm() {
   const [portPairs, setPortPairs] = useState([]);
@@ -20,8 +20,21 @@ function QuoteForm() {
     .filter((p) => p.load === origin)
     .map((p) => p.destination);
 
+  const navigate = useNavigate();
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    navigate("/quote/result", {
+      state: {
+        origin,
+        destination,
+        containerId: parseInt(containerId),
+      },
+    });
+  }
+
   return (
-    <form>
+    <form onSubmit={handleSubmit}>
       <h1>Quote Form</h1>
       <label>Origin</label>
       <select
