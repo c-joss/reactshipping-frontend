@@ -10,6 +10,12 @@ function QuoteForm() {
   const [containerId, setContainerId] = useState("");
 
   useEffect(() => {
+    fetch(`${process.env.REACT_APP_API_URL}/portPairs`)
+      .then((res) => res.json())
+      .then(setPortPairs);
+  });
+
+  useEffect(() => {
     fetch(`${process.env.REACT_APP_API_URL}/containers`)
       .then((res) => res.json())
       .then(setContainers);
