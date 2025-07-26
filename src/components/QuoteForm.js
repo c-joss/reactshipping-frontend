@@ -15,6 +15,11 @@ function QuoteForm() {
       .then(setContainers);
   }, []);
 
+  const origins = [...new Set(portPairs.map((p) => p.load))];
+  const destinations = portPairs
+    .filter((p) => p.load === origin)
+    .map((p) => p.destination);
+
   return <h1>Quote Form</h1>;
 }
 
