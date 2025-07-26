@@ -20,7 +20,43 @@ function QuoteForm() {
     .filter((p) => p.load === origin)
     .map((p) => p.destination);
 
-  return <h1>Quote Form</h1>;
+  return (
+    <form>
+      <h1>Quote Form</h1>
+      <label>Origin</label>
+      <select
+        value={origin}
+        onChange={(e) => setOrigin(e.target.value)}
+        required
+      >
+        <option value="">Select</option>
+        {origins.map((o) => (
+          <option key={o}>{o}</option>
+        ))}
+      </select>
+      <label>Destination</label>
+      <select
+        value={destination}
+        onChange={(e) => setDestination(e.target.value)}
+        required
+      >
+        <option value="">Select</option>
+        {destinations.map((d) => (
+          <option key={d}>{d}</option>
+        ))}
+      </select>
+      <label>Container Type</label>
+      <select
+        value={containerId}
+        onChange={(e) => setContainerId(e.target.value)}
+        required
+      >
+        <option value="">Select</option>
+        {containers.map((c) => (
+          <option key={c}>{c}</option>
+        ))}
+      </select>
+    </form>
+  );
 }
-
 export default QuoteForm;
