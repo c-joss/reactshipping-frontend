@@ -35,12 +35,14 @@ function QuoteForm() {
           )
         )
       )
-    )
-    .then((results) => {
+    ).then((results) => {
       const quotes = results.flat().filter(Boolean);
       navigate("/quote/result", {
         state: {
           quotes,
+          selectedContainerIds,
+          selectedOrigin,
+          selectedDestination,
         },
       });
     });

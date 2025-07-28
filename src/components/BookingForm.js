@@ -2,23 +2,42 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 function BookingForm() {
-  const { state } = useLocation();
+  const { state } = useLocation() || {};
   const { origin, destination, containerType, rate, transitTime } = state || {};
 
-  const [customerName, setCustomerName] = useState("");
-  const [email, setEmail] = useState("");
-
   const navigate = useNavigate();
+
+  const [formData, setFormData] = useState({
+    companyName: "",
+    email: "",
+    origin: state?.origin || "",
+    destination: state?.destination || "",
+    containerType: state?.containerType || "",
+    transitTime: state?.transitTime || "",
+    freight: state?.rate?.freight || "",
+    thc: state?.rate?.thc || "",
+    doc: state?.rate?.doc || "",
+    dhc: state?.rate?.dhc || "",
+    lss: state?.rate?.lss || "",
+  });
+
+  function handleChange(e) {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
     const newBooking = {
-      customerName,
-      email,
-      origin,
-      destination,
-      containerType,
+      customerName: formData.companyName,
+      email: formData.email,
+      origin: formData.origin,
+      destination: formData.destination,
+      containerType: formData.containerType,
       quote: {
         freight: rate.freight,
         thc: rate.thc,
@@ -40,12 +59,12 @@ function BookingForm() {
       .then((data) => {
         navigate("/booking/confirmation", {
           state: {
-            customerName,
-            email,
-            origin,
-            destination,
-            containerType,
-            transitTime,
+            customerName: formData.companyName,
+            email: formData.email,
+            origin: formData.origin,
+            destination: formData.destination,
+            containerType: formData.containerType,
+            transitTime: formData.transitTime,
           },
         });
       });
@@ -54,17 +73,51 @@ function BookingForm() {
   return (
     <form onSubmit={handleSubmit}>
       <h1>Booking Form</h1>
-      <p>Origin: {origin}</p>
-      <p>Destination: {destination}</p>
-      <p>Container Type: {containerType}</p>
-
-      <label>Customer Name</label>
-      <input
-        type="text"
-        value={customerName}
-        onChange={(e) => setCustomerName(e.target.value)}
-        required
-      ></input>
+      <label>
+        Company Name:
+        <input
+          type="text"
+          name="companyName"
+          value={formData.companyName}
+          onChange={handleChange}
+        />
+      </label>
+      <label>
+        Email:
+        <input
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+        />
+      </label>
+      <label>
+        Origin:
+        <input
+          type="text"
+          name="origin"
+          value={formData.origin}
+          onChange={handleChange}
+        />
+      </label>
+      <label>
+        Destination:
+        <input
+          type="text"
+          name="destination"
+          value={formData.destination}
+          onChange={handleChange}
+        />
+      </label>
+      <label>
+        Container Type:
+        <input
+          type="text"
+          name="containerType"
+          value={formData.containerType}
+          onChange={handleChange}
+        />
+      </label>
 
       <button type="submit">Request Booking</button>
     </form>
