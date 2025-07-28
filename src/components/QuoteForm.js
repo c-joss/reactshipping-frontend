@@ -5,9 +5,9 @@ function QuoteForm() {
   const [portPairs, setPortPairs] = useState([]);
   const [containers, setContainers] = useState([]);
 
-  const [origin, setOrigin] = useState("");
-  const [destination, setDestination] = useState("");
-  const [containerId, setContainerId] = useState("");
+  const [selectedOrigin, setSelectedOrigin] = useState([]);
+  const [selectedDestination, setSelectedDestination] = useState([]);
+  const [selectedContainerIds, setSelectedContainerIds] = useState([]);
 
   useEffect(() => {
     fetch(`${process.env.REACT_APP_API_URL}/portPairs`)
@@ -25,69 +25,102 @@ function QuoteForm() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    fetch(
-      `${process.env.REACT_APP_API_URL}/quotes?origin=${origin}&destination=${destination}&containerId=${containerId}`
+    Promise.all(
+      selectedOrigin.flatMap((origin) =>
+        selectedDestination.flatMap((destination) =>
+          selectedContainerIds.map((containerId) =>
+            fetch(
+              `${process.env.REACT_APP_API_URL}/quotes?origin=${origin}&destination=${destination}&containerId=${containerId}`
+            ).then((res) => res.json())
+          )
+        )
+      )
     )
-      .then((res) => res.json())
-      .then((data) => {
-        const selectedContainer = containers.find((c) => c.id == containerId);
-
-        console.log("Selected container:", selectedContainer);
-        navigate("/quote/result", {
-          state: {
-            origin,
-            destination,
-            containerId,
-            containerType: selectedContainer?.type || "unknown",
-            quote: data[0] || null,
-          },
-        });
+    .then((results) => {
+      const quotes = results.flat().filter(Boolean);
+      navigate("/quote/result", {
+        state: {
+          quotes,
+        },
       });
+    });
   };
 
   const origins = [...new Set(portPairs.map((p) => p.load))];
-  const destinations = portPairs
-    .filter((p) => p.load === origin)
-    .map((p) => p.destination);
+  const destinations = [
+    ...new Set(
+      portPairs
+        .filter((p) => selectedOrigin.includes(p.load))
+        .map((p) => p.destination)
+    ),
+  ];
 
   return (
     <form onSubmit={handleSubmit}>
       <h1>Quote Form</h1>
       <label>Origin</label>
-      <select
-        value={origin}
-        onChange={(e) => setOrigin(e.target.value)}
-        required
-      >
-        <option value="">Select</option>
-        {origins.map((o) => (
-          <option key={o}>{o}</option>
+      <div>
+        {origins.map((origin) => (
+          <label key={origin} style={{ display: "block" }}>
+            <input
+              type="checkbox"
+              value={origin}
+              checked={selectedOrigin.includes(origin)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedOrigin((prev) =>
+                  e.target.checked
+                    ? [...prev, val]
+                    : prev.filter((o) => o !== val)
+                );
+              }}
+            ></input>
+            {origin}
+          </label>
         ))}
-      </select>
+      </div>
       <label>Destination</label>
-      <select
-        value={destination}
-        onChange={(e) => setDestination(e.target.value)}
-        required
-      >
-        <option value="">Select</option>
-        {destinations.map((d) => (
-          <option key={d}>{d}</option>
+      <div>
+        {destinations.map((destination) => (
+          <label key={destination} style={{ display: "block" }}>
+            <input
+              type="checkbox"
+              value={destination}
+              checked={selectedDestination.includes(destination)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedDestination((prev) =>
+                  e.target.checked
+                    ? [...prev, val]
+                    : prev.filter((d) => d !== val)
+                );
+              }}
+            ></input>
+            {destination}
+          </label>
         ))}
-      </select>
+      </div>
       <label>Container Type</label>
-      <select
-        value={containerId}
-        onChange={(e) => setContainerId(e.target.value)}
-        required
-      >
-        <option value="">Select</option>
-        {containers.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.type}
-          </option>
+      <div>
+        {containers.map((container) => (
+          <label key={container.id} style={{ display: "block" }}>
+            <input
+              type="checkbox"
+              value={container.id}
+              checked={selectedContainerIds.includes(container.id)}
+              onChange={(e) => {
+                const id = parseInt(e.target.value);
+                setSelectedContainerIds((prev) =>
+                  e.target.checked
+                    ? [...prev, id]
+                    : prev.filter((cid) => cid !== id)
+                );
+              }}
+            ></input>
+            {container.type}
+          </label>
         ))}
-      </select>
+      </div>
       <button type="submit">Get Quote</button>
     </form>
   );
