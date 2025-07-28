@@ -8,6 +8,31 @@ function BookingForm() {
   const [customerName, setCustomerName] = useState("");
   const [email, setEmail] = useState("");
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    const newBooking = {
+      customerName,
+      email,
+      origin,
+      destination,
+      containerType,
+      quote,
+    };
+
+    fetch(`${process.env.REACT_APP_API_URL}/bookings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newBooking),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        alert("Booking Requested!");
+      });
+  };
+
   return (
     <form>
       <h1>Booking Form</h1>
