@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 function BookingForm() {
@@ -7,6 +7,8 @@ function BookingForm() {
 
   const [customerName, setCustomerName] = useState("");
   const [email, setEmail] = useState("");
+
+  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -36,7 +38,16 @@ function BookingForm() {
     })
       .then((res) => res.json())
       .then((data) => {
-        alert("Booking Requested!");
+        navigate("/booking/confirmation", {
+          state: {
+            customerName,
+            email,
+            origin,
+            destination,
+            containerType,
+            transitTime,
+          },
+        });
       });
   };
 
