@@ -3,7 +3,7 @@ import { useState } from "react";
 
 function BookingForm() {
   const { state } = useLocation();
-  const { origin, destination, containerType, quote } = state || {};
+  const { origin, destination, containerType, rate, transitTime } = state || {};
 
   const [customerName, setCustomerName] = useState("");
   const [email, setEmail] = useState("");
@@ -17,7 +17,14 @@ function BookingForm() {
       origin,
       destination,
       containerType,
-      quote,
+      quote: {
+        freight: rate.freight,
+        thc: rate.thc,
+        doc: rate.doc,
+        dhc: rate.dhc,
+        lss: rate.lss,
+        transitTime,
+      },
     };
 
     fetch(`${process.env.REACT_APP_API_URL}/bookings`, {
@@ -34,7 +41,7 @@ function BookingForm() {
   };
 
   return (
-    <form>
+    <form onSubmit={handleSubmit}>
       <h1>Booking Form</h1>
       <p>Origin: {origin}</p>
       <p>Destination: {destination}</p>

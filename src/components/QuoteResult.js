@@ -10,6 +10,10 @@ function QuoteResult() {
 
   const rate = quote?.rates.find((r) => r.containerId === Number(containerId));
 
+  const selectedRate = quote?.rates.find(
+    (r) => r.containerId === parseInt(containerId)
+  );
+
   return (
     <>
       <div>
@@ -47,9 +51,16 @@ function QuoteResult() {
           <p>No quote found.</p>
         )}
       </div>
+
       <Link
         to="/booking"
-        state={{ origin, destination, containerId, containerType, quote }}
+        state={{
+          origin,
+          destination,
+          containerType,
+          rate: selectedRate,
+          transitTime: quote.transitTime,
+        }}
       >
         Book Now
       </Link>
