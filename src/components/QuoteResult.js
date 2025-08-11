@@ -1,42 +1,107 @@
 import { useLocation, Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 function QuoteResult() {
-  const { state } = useLocation();
+  const { state } = useLocation() || {};
   const {
-    quotes = [],
-    selectedContainerIds = [],
+    quotes: navQuotes = [],
+    selectedContainerIds: navCids = [],
     selectedOrigin = [],
     selectedDestination = [],
   } = state || {};
 
   const [portPairs, setPortPairs] = useState([]);
   const [containers, setContainers] = useState([]);
+  const [quotes, setQuotes] = useState(navQuotes);
+
+  const selectedContainerIds = useMemo(
+    () => (navCids || []).map(Number),
+    [navCids]
+  );
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/portPairs`)
-      .then((res) => res.json())
-      .then(setPortPairs);
-
-    fetch(`${process.env.REACT_APP_API_URL}/containers`)
-      .then((res) => res.json())
-      .then(setContainers);
+    Promise.all([
+      fetch(`${process.env.REACT_APP_API_URL}/portPairs`).then((r) => r.json()),
+      fetch(`${process.env.REACT_APP_API_URL}/containers`).then((r) =>
+        r.json()
+      ),
+    ]).then(([pp, cs]) => {
+      setPortPairs(pp || []);
+      setContainers(cs || []);
+    });
   }, []);
 
-  const getPortPair = (id) => portPairs.find((pair) => pair.id === id) || {};
-  const getContainerType = (id) =>
-    containers.find((c) => c.id === id)?.type || id;
+  useEffect(() => {
+    if (navQuotes && navQuotes.length) return;
+    fetch(`${process.env.REACT_APP_API_URL}/quotes`)
+      .then((r) => r.json())
+      .then((all) => setQuotes(all || []));
+  }, [navQuotes]);
 
-  console.log("Received quotes:", quotes);
-  console.log("Selected container IDs:", selectedContainerIds);
+  const portPairById = useMemo(() => {
+    const m = new Map();
+    for (const p of portPairs) m.set(Number(p.id), p);
+    return m;
+  }, [portPairs]);
+
+  const containerById = useMemo(() => {
+    const m = new Map();
+    for (const c of containers) m.set(Number(c.id), c);
+    return m;
+  }, [containers]);
+
+  const rows = useMemo(() => {
+    if (!quotes.length || !selectedContainerIds.length) return [];
+    const out = [];
+
+    for (const q of quotes) {
+      const pair = portPairById.get(Number(q.portPairId));
+      if (!pair) continue;
+
+      if (selectedOrigin.length && !selectedOrigin.includes(pair.load))
+        continue;
+      if (
+        selectedDestination.length &&
+        !selectedDestination.includes(pair.destination)
+      )
+        continue;
+
+      const rateList = Array.isArray(q.rates) ? q.rates : [];
+
+      for (const cid of selectedContainerIds) {
+        const rate = rateList.find(
+          (r) => Number(r.containerId) === Number(cid)
+        );
+        if (!rate) continue;
+
+        out.push({
+          origin: pair.load,
+          destination: pair.destination,
+          containerId: cid,
+          containerType: containerById.get(Number(cid))?.type || `#${cid}`,
+          transitTime: q.transitTime || "N/A",
+          rate,
+        });
+      }
+    }
+    return out;
+  }, [
+    quotes,
+    selectedContainerIds,
+    selectedOrigin,
+    selectedDestination,
+    portPairById,
+    containerById,
+  ]);
 
   return (
     <div>
       <h1>Quote Result</h1>
-      {quotes.length === 0 ? (
-        <p>No rates found.</p>
+
+      {rows.length === 0 ? (
+        <p>No matching rates. Try different selections.</p>
       ) : (
-        <table border="1" cellPadding="10">
+        <table border="1" cellPadding="8" cellSpacing="0">
           <thead>
             <tr>
               <th>Origin</th>
@@ -47,49 +112,40 @@ function QuoteResult() {
               <th>DOC</th>
               <th>DHC</th>
               <th>LSS</th>
-              <th>Transit Time (days)</th>
+              <th>Transit</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            {quotes.flatMap((quote, quoteIndex) => {
-              const { load: origin, destination } = getPortPair(
-                quote.portPairId
-              );
-              return quote.rates
-                .filter(
-                  (rate) =>
-                    selectedOrigin.includes(origin) &&
-                    selectedDestination.includes(destination) &&
-                    selectedContainerIds.includes(rate.containerId)
-                )
-                .map((rate, rateIndex) => (
-                  <tr key={`${quoteIndex}-${rateIndex}`}>
-                    <td>{origin}</td>
-                    <td>{destination}</td>
-                    <td>{getContainerType(rate.containerId)}</td>
-                    <td>${rate.freight || "N/A"}</td>
-                    <td>${rate.thc || "N/A"}</td>
-                    <td>${rate.doc || "N/A"}</td>
-                    <td>${rate.dhc || "N/A"}</td>
-                    <td>${rate.lss || "N/A"}</td>
-                    <td>{quote.transitTime || "N/A"}</td>
-                    <td>
-                      <Link
-                        to="/booking"
-                        state={{
-                          origin,
-                          destination,
-                          containerType: getContainerType(rate.containerId),
-                          rate,
-                          transitTime: quote.transitTime,
-                        }}
-                      >
-                        Book Now
-                      </Link>
-                    </td>
-                  </tr>
-                ));
-            })}
+            {rows.map((row, idx) => (
+              <tr
+                key={`${row.origin}-${row.destination}-${row.containerId}-${idx}`}
+              >
+                <td>{row.origin}</td>
+                <td>{row.destination}</td>
+                <td>{row.containerType}</td>
+                <td>${row.rate.freight ?? "N/A"}</td>
+                <td>${row.rate.thc ?? "N/A"}</td>
+                <td>${row.rate.doc ?? "N/A"}</td>
+                <td>${row.rate.dhc ?? "N/A"}</td>
+                <td>${row.rate.lss ?? "N/A"}</td>
+                <td>{row.transitTime}</td>
+                <td>
+                  <Link
+                    to="/booking"
+                    state={{
+                      origin: row.origin,
+                      destination: row.destination,
+                      containerType: row.containerType,
+                      rate: row.rate,
+                      transitTime: row.transitTime,
+                    }}
+                  >
+                    Book Now
+                  </Link>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       )}

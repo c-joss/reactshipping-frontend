@@ -1,130 +1,141 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function QuoteForm() {
   const [portPairs, setPortPairs] = useState([]);
   const [containers, setContainers] = useState([]);
+  const [quotes, setQuotes] = useState([]);
 
   const [selectedOrigin, setSelectedOrigin] = useState([]);
   const [selectedDestination, setSelectedDestination] = useState([]);
   const [selectedContainerIds, setSelectedContainerIds] = useState([]);
 
-  useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/portPairs`)
-      .then((res) => res.json())
-      .then(setPortPairs);
-  }, []);
-
-  useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/containers`)
-      .then((res) => res.json())
-      .then(setContainers);
-  }, []);
-
   const navigate = useNavigate();
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`${process.env.REACT_APP_API_URL}/portPairs`).then((r) => r.json()),
+      fetch(`${process.env.REACT_APP_API_URL}/containers`).then((r) =>
+        r.json()
+      ),
+      fetch(`${process.env.REACT_APP_API_URL}/quotes`).then((r) => r.json()),
+    ]).then(([pp, cs, qs]) => {
+      setPortPairs(pp || []);
+      setContainers(cs || []);
+      setQuotes(qs || []);
+    });
+  }, []);
+
+  const origins = useMemo(
+    () => [...new Set(portPairs.map((p) => p.load))],
+    [portPairs]
+  );
+
+  const destinations = useMemo(() => {
+    if (selectedOrigin.length === 0) {
+      return [...new Set(portPairs.map((p) => p.destination))];
+    }
+    return [
+      ...new Set(
+        portPairs
+          .filter((p) => selectedOrigin.includes(p.load))
+          .map((p) => p.destination)
+      ),
+    ];
+  }, [portPairs, selectedOrigin]);
+
+  const toggle = (value, setter) =>
+    setter((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    Promise.all(
-      selectedOrigin.flatMap((origin) =>
-        selectedDestination.flatMap((destination) =>
-          selectedContainerIds.map((containerId) =>
-            fetch(
-              `${process.env.REACT_APP_API_URL}/quotes?origin=${origin}&destination=${destination}&containerId=${containerId}`
-            ).then((res) => res.json())
-          )
-        )
-      )
-    ).then((results) => {
-      const quotes = results.flat().filter(Boolean);
-      navigate("/quote/result", {
-        state: {
-          quotes,
-          selectedContainerIds,
-          selectedOrigin,
-          selectedDestination,
-        },
-      });
+    const odPairs = [];
+    for (const o of selectedOrigin)
+      for (const d of selectedDestination) odPairs.push([o, d]);
+
+    const picked = [];
+    const seen = new Set();
+    for (const [o, d] of odPairs) {
+      const pair = portPairs.find((p) => p.load === o && p.destination === d);
+      if (!pair) continue;
+      const q = quotes.find((qq) => Number(qq.portPairId) === Number(pair.id));
+      if (q && !seen.has(q.id)) {
+        picked.push(q);
+        seen.add(q.id);
+      }
+    }
+
+    navigate("/quote/result", {
+      state: {
+        quotes: picked,
+        selectedContainerIds: selectedContainerIds.map(Number),
+        selectedOrigin,
+        selectedDestination,
+      },
     });
   };
 
-  const origins = [...new Set(portPairs.map((p) => p.load))];
-  const destinations = [
-    ...new Set(
-      portPairs
-        .filter((p) => selectedOrigin.includes(p.load))
-        .map((p) => p.destination)
-    ),
-  ];
-
   return (
     <form onSubmit={handleSubmit}>
-      <h1>Quote Form</h1>
-      <label>Origin</label>
-      <div>
-        {origins.map((origin) => (
-          <label key={origin} style={{ display: "block" }}>
+      <h1>Get Quotes</h1>
+
+      <fieldset>
+        <legend>Origin (multi-select)</legend>
+        {origins.map((o) => (
+          <label key={o} style={{ display: "block" }}>
             <input
               type="checkbox"
-              value={origin}
-              checked={selectedOrigin.includes(origin)}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSelectedOrigin((prev) =>
-                  e.target.checked
-                    ? [...prev, val]
-                    : prev.filter((o) => o !== val)
-                );
-              }}
-            ></input>
-            {origin}
+              checked={selectedOrigin.includes(o)}
+              onChange={() => toggle(o, setSelectedOrigin)}
+            />
+            {o}
           </label>
         ))}
-      </div>
-      <label>Destination</label>
-      <div>
-        {destinations.map((destination) => (
-          <label key={destination} style={{ display: "block" }}>
+      </fieldset>
+
+      <fieldset>
+        <legend>Destination (multi-select)</legend>
+        {destinations.map((d) => (
+          <label key={d} style={{ display: "block" }}>
             <input
               type="checkbox"
-              value={destination}
-              checked={selectedDestination.includes(destination)}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSelectedDestination((prev) =>
-                  e.target.checked
-                    ? [...prev, val]
-                    : prev.filter((d) => d !== val)
-                );
-              }}
-            ></input>
-            {destination}
+              checked={selectedDestination.includes(d)}
+              onChange={() => toggle(d, setSelectedDestination)}
+            />
+            {d}
           </label>
         ))}
-      </div>
-      <label>Container Type</label>
-      <div>
-        {containers.map((container) => (
-          <label key={container.id} style={{ display: "block" }}>
+      </fieldset>
+
+      <fieldset>
+        <legend>Container (multi-select)</legend>
+        {containers.map((c) => (
+          <label key={c.id} style={{ display: "block" }}>
             <input
               type="checkbox"
-              value={container.id}
-              checked={selectedContainerIds.includes(container.id)}
-              onChange={(e) => {
-                const id = parseInt(e.target.value);
-                setSelectedContainerIds((prev) =>
-                  e.target.checked
-                    ? [...prev, id]
-                    : prev.filter((cid) => cid !== id)
-                );
-              }}
-            ></input>
-            {container.type}
+              checked={selectedContainerIds.includes(c.id)}
+              onChange={() => toggle(c.id, setSelectedContainerIds)}
+            />
+            {c.type}
           </label>
         ))}
-      </div>
-      <button type="submit">Get Quote</button>
+      </fieldset>
+
+      <button
+        type="submit"
+        disabled={
+          selectedOrigin.length === 0 ||
+          selectedDestination.length === 0 ||
+          selectedContainerIds.length === 0
+        }
+      >
+        Show Quotes
+      </button>
     </form>
   );
 }
+
 export default QuoteForm;
