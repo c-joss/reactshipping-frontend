@@ -137,8 +137,9 @@ function QuoteResult() {
                       origin: row.origin,
                       destination: row.destination,
                       containerType: row.containerType,
+                      containerId: Number(row.containerId),
                       rate: row.rate,
-                      transitTime: row.transitTime,
+                      transitTime: row.transitTime || "",
                     }}
                   >
                     Book Now

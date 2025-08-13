@@ -1,21 +1,22 @@
 import { useLocation } from "react-router-dom";
 
 function BookingConfirmation() {
-  const { state } = useLocation();
-  const {
-    customerName = "",
-    email = "",
-    origin = "",
-    destination = "",
-    containerType = "",
-    transitTime = "",
-  } = state || {};
+  const { state } = useLocation() || {};
+
+  const origin = state?.origin || "";
+  const destination = state?.destination || "";
+  const containerType = state?.containerType || "";
+  const transitTime = state?.transitTime || "";
+
+  const name = state?.customer?.name ?? state?.customerName ?? "";
+  const email = state?.customer?.email ?? state?.email ?? "";
 
   return (
     <div>
       <h1>Booking Requested</h1>
+
       <p>
-        <strong>Name:</strong> {customerName}
+        <strong>Name:</strong> {name}
       </p>
       <p>
         <strong>Email:</strong> {email}

@@ -1,126 +1,333 @@
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
-function BookingForm() {
+function BookingForm({ addBooking }) {
   const { state } = useLocation() || {};
-  const { origin, destination, containerType, rate, transitTime } = state || {};
+  const {
+    origin: navOrigin = "",
+    destination: navDestination = "",
+    containerType: navContainerType = "",
+    containerId: navContainerId = null,
+    rate: navRate = null,
+    transitTime: navTransit = "",
+  } = state || {};
+
+  const isPrefilled = Boolean(
+    navOrigin && navDestination && (navContainerType || navContainerId != null)
+  );
+
+  const [origin, setOrigin] = useState(isPrefilled ? navOrigin : "");
+  const [destination, setDestination] = useState(
+    isPrefilled ? navDestination : ""
+  );
+  const [containerType, setContainerType] = useState(
+    isPrefilled ? navContainerType : ""
+  );
+  const [containerId, setContainerId] = useState(
+    navContainerId != null ? Number(navContainerId) : null
+  );
+  const [transitTime, setTransitTime] = useState(isPrefilled ? navTransit : "");
+  const [rate, setRate] = useState(isPrefilled ? navRate : null);
+
+  const [portPairs, setPortPairs] = useState([]);
+  const [containers, setContainers] = useState([]);
+  const [quotes, setQuotes] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const [name, setName] = useState("");
+  const [company, setCompany] = useState("");
+  const [email, setEmail] = useState("");
 
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    companyName: "",
-    email: "",
-    origin: state?.origin || "",
-    destination: state?.destination || "",
-    containerType: state?.containerType || "",
-    transitTime: state?.transitTime || "",
-    freight: state?.rate?.freight || "",
-    thc: state?.rate?.thc || "",
-    doc: state?.rate?.doc || "",
-    dhc: state?.rate?.dhc || "",
-    lss: state?.rate?.lss || "",
-  });
+  useEffect(() => {
+    if (isPrefilled && navRate) return;
+    setLoading(true);
+    Promise.all([
+      fetch(`${process.env.REACT_APP_API_URL}/portPairs`).then((r) => r.json()),
+      fetch(`${process.env.REACT_APP_API_URL}/containers`).then((r) =>
+        r.json()
+      ),
+      fetch(`${process.env.REACT_APP_API_URL}/quotes`).then((r) => r.json()),
+    ])
+      .then(([pp, cs, qs]) => {
+        setPortPairs(pp || []);
+        setContainers(cs || []);
+        setQuotes(qs || []);
+      })
+      .finally(() => setLoading(false));
+  }, [isPrefilled, navRate]);
 
-  function handleChange(e) {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  }
+  const origins = useMemo(
+    () => [...new Set(portPairs.map((p) => p.load))],
+    [portPairs]
+  );
+
+  const destinations = useMemo(() => {
+    if (!origin) return [...new Set(portPairs.map((p) => p.destination))];
+    return [
+      ...new Set(
+        portPairs.filter((p) => p.load === origin).map((p) => p.destination)
+      ),
+    ];
+  }, [portPairs, origin]);
+
+  useEffect(() => {
+    if (isPrefilled && navRate) return;
+    if (!origin || !destination || (!containerType && containerId == null)) {
+      setRate(null);
+      setTransitTime("");
+      return;
+    }
+    const pair = portPairs.find(
+      (p) => p.load === origin && p.destination === destination
+    );
+    if (!pair) {
+      setRate(null);
+      setTransitTime("");
+      return;
+    }
+    const quote = quotes.find((q) => Number(q.portPairId) === Number(pair.id));
+    if (!quote) {
+      setRate(null);
+      setTransitTime("");
+      return;
+    }
+    let cid = containerId;
+    if (cid == null && containerType) {
+      const c = containers.find(
+        (x) =>
+          String(x.type).trim().toLowerCase() ===
+          String(containerType).trim().toLowerCase()
+      );
+      if (c) cid = Number(c.id);
+    }
+    if (cid == null) {
+      setRate(null);
+      setTransitTime(quote.transitTime || "");
+      return;
+    }
+    const found =
+      Array.isArray(quote.rates) &&
+      quote.rates.find((r) => Number(r.containerId) === Number(cid));
+    setRate(found || null);
+    setTransitTime(quote.transitTime || "");
+    if (containerId == null && cid != null) setContainerId(cid);
+  }, [
+    isPrefilled,
+    navRate,
+    origin,
+    destination,
+    containerType,
+    containerId,
+    portPairs,
+    quotes,
+    containers,
+  ]);
+
+  const canSubmit =
+    !!name &&
+    !!email &&
+    !!origin &&
+    !!destination &&
+    (!!containerType || containerId != null) &&
+    !!rate;
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!rate) return;
 
-    const newBooking = {
-      customerName: formData.companyName,
-      email: formData.email,
-      origin: formData.origin,
-      destination: formData.destination,
-      containerType: formData.containerType,
-      quote: {
-        freight: rate.freight,
-        thc: rate.thc,
-        doc: rate.doc,
-        dhc: rate.dhc,
-        lss: rate.lss,
-        transitTime,
+    const cType =
+      containerType ||
+      containers.find((c) => Number(c.id) === Number(containerId))?.type ||
+      "";
+
+    const booking = {
+      origin,
+      destination,
+      containerType: cType,
+      transitTime: transitTime || "N/A",
+      charges: {
+        freight: rate.freight ?? null,
+        thc: rate.thc ?? null,
+        doc: rate.doc ?? null,
+        dhc: rate.dhc ?? null,
+        lss: rate.lss ?? null,
       },
+      customer: { name, company, email },
+      createdAt: new Date().toISOString(),
     };
 
     fetch(`${process.env.REACT_APP_API_URL}/bookings`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(newBooking),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(booking),
     })
-      .then((res) => res.json())
-      .then((data) => {
-        navigate("/booking/confirmation", {
-          state: {
-            customerName: formData.companyName,
-            email: formData.email,
-            origin: formData.origin,
-            destination: formData.destination,
-            containerType: formData.containerType,
-            transitTime: formData.transitTime,
-          },
-        });
+      .then((r) => r.json())
+      .then((saved) => {
+        if (typeof addBooking === "function") addBooking(saved);
+        navigate("/booking/confirmation", { state: saved });
       });
   };
-
   return (
-    <form onSubmit={handleSubmit}>
-      <h1>Booking Form</h1>
-      <label>
-        Company Name:
-        <input
-          type="text"
-          name="companyName"
-          value={formData.companyName}
-          onChange={handleChange}
-        />
-      </label>
-      <label>
-        Email:
-        <input
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-        />
-      </label>
-      <label>
-        Origin:
-        <input
-          type="text"
-          name="origin"
-          value={formData.origin}
-          onChange={handleChange}
-        />
-      </label>
-      <label>
-        Destination:
-        <input
-          type="text"
-          name="destination"
-          value={formData.destination}
-          onChange={handleChange}
-        />
-      </label>
-      <label>
-        Container Type:
-        <input
-          type="text"
-          name="containerType"
-          value={formData.containerType}
-          onChange={handleChange}
-        />
-      </label>
+    <div>
+      <h1>Booking</h1>
 
-      <button type="submit">Request Booking</button>
-    </form>
+      {isPrefilled ? (
+        <div style={{ marginBottom: 12 }}>
+          <div>
+            <strong>Origin:</strong> {origin}
+          </div>
+          <div>
+            <strong>Destination:</strong> {destination}
+          </div>
+          <div>
+            <strong>Container:</strong>{" "}
+            {containerType ||
+              containers.find((c) => Number(c.id) === Number(containerId))
+                ?.type ||
+              "-"}
+          </div>
+          <div>
+            <strong>Transit:</strong>{" "}
+            {transitTime || (loading ? "Looking up…" : "N/A")}
+          </div>
+          <div>
+            <strong>Charges:</strong>{" "}
+            {rate
+              ? `Freight $${rate.freight ?? "N/A"}, THC $${
+                  rate.thc ?? "N/A"
+                }, DOC $${rate.doc ?? "N/A"}, DHC $${rate.dhc ?? "N/A"}, LSS $${
+                  rate.lss ?? "N/A"
+                }`
+              : loading
+              ? "Looking up rate…"
+              : "No rate found"}
+          </div>
+        </div>
+      ) : (
+        <div style={{ marginBottom: 12 }}>
+          <div>
+            <label>
+              Origin
+              <select
+                value={origin}
+                onChange={(e) => {
+                  setOrigin(e.target.value);
+                  setDestination("");
+                }}
+              >
+                <option value="">Select origin…</option>
+                {origins.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div>
+            <label>
+              Destination
+              <select
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                disabled={!origin}
+              >
+                <option value="">
+                  {origin ? "Select destination…" : "Choose origin first"}
+                </option>
+                {destinations.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div>
+            <label>
+              Container
+              <select
+                value={containerType}
+                onChange={(e) => {
+                  setContainerType(e.target.value);
+                  setContainerId(null);
+                }}
+              >
+                <option value="">Select container…</option>
+                {containers.map((c) => (
+                  <option key={c.id} value={c.type}>
+                    {c.type}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div style={{ marginTop: 8 }}>
+            <strong>Transit:</strong>{" "}
+            {transitTime ||
+              (origin && destination && containerType
+                ? loading
+                  ? "Looking up…"
+                  : "N/A"
+                : "-")}
+          </div>
+          <div>
+            <strong>Charges:</strong>{" "}
+            {rate
+              ? `Freight $${rate.freight ?? "N/A"}, THC $${
+                  rate.thc ?? "N/A"
+                }, DOC $${rate.doc ?? "N/A"}, DHC $${rate.dhc ?? "N/A"}, LSS $${
+                  rate.lss ?? "N/A"
+                }`
+              : origin && destination && (containerType || containerId != null)
+              ? loading
+                ? "Looking up rate…"
+                : "No rate found for this selection"
+              : "-"}
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        <label>
+          Name
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            type="text"
+          />
+        </label>
+        <br />
+        <label>
+          Company
+          <input
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            type="text"
+          />
+        </label>
+        <br />
+        <label>
+          Email
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            type="email"
+          />
+        </label>
+        <br />
+        <button type="submit" disabled={!canSubmit}>
+          Confirm Booking
+        </button>
+      </form>
+    </div>
   );
 }
 
