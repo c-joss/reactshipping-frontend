@@ -1,70 +1,147 @@
-# Getting Started with Create React App
+# Freight Quotes — React SPA
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React single-page app for ocean freight quotes and bookings.  
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- Quote lookup with multi-select **Origin**, **Destination**, and **Container**
+- Client-side join of nested data:  
+  `(origin,destination) → portPairId → quote → rates[containerId]`
+- **Book Now** flow (prefilled booking) and **manual booking** from Home/Nav
+- All fields required with asterisks and custom validation alerts on submit
+- Persist booking (`POST /bookings`) and update app state on response
+- Routes: `/`, `/quote`, `/quote/result`, `/booking`, `/booking/confirmation`
 
-### `npm start`
+## Tech
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- React (Create React App)
+- React Router
+- `json-server`
+- Plain CSS
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## Project Structure
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```text
+my-app/                  # React frontend (CRA)
+  public/
+  src/
+    components/
+      NavBar.js
+      Home.js
+      QuoteForm.js
+      QuoteResult.js
+      BookingForm.js
+      BookingConfirmation.js
+    App.js
+    App.css
+    index.js
+  .env.development       # REACT_APP_API_URL=http://localhost:3001
+  package.json
 
-### `npm run build`
+reactshipping-backend/   # json-server backend
+  db.json
+  package.json
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Environment Variables
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Create **`my-app/.env.development`** with:
 
-### `npm run eject`
+```env
+REACT_APP_API_URL=http://localhost:3001
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+For production, either set the env var in your hosting settings or create `my-app/.env.production`:
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```env
+REACT_APP_API_URL=https://your-backend-host
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+After editing `.env*` files, restart `npm start`.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Quick Start
 
-## Learn More
+### Backend (json-server)
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```bash
+cd reactshipping-backend
+npm install           # if package.json includes json-server
+npm start             # runs: json-server --watch db.json --port 3001
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Frontend (React)
 
-### Code Splitting
+```bash
+cd my-app
+npm install
+npm start             # http://localhost:3000
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## API Overview (json-server)
 
-### Analyzing the Bundle Size
+Top-level routes from db.json:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- GET /portPairs
 
-### Making a Progressive Web App
+- GET /containers
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+- GET /quotes (each quote has nested rates with container charges)
 
-### Advanced Configuration
+- GET /bookings
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+- POST /bookings
 
-### Deployment
+## Example quote:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+```json
+{
+  "id": 1,
+  "portPairId": 1,
+  "transitTime": "18d",
+  "rates": [
+    { "containerId": 1, "freight": 1000, "thc": 100, "doc": 50, "dhc": 90, "lss": 25 },
+    { "containerId": 2, "freight": 1200, "thc": 100, "doc": 50, "dhc": 90, "lss": 25 }
+  ]
+}
+```
 
-### `npm run build` fails to minify
+## Example booking payload:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```json
+{
+  "origin": "Melbourne",
+  "destination": "Shanghai",
+  "containerType": "40GP",
+  "transitTime": "18d",
+  "charges": { "freight": 1234, "thc": 100, "doc": 50, "dhc": 90, "lss": 25 },
+  "customer": { "name": "Ada Lovelace", "company": "Analytical Engines", "email": "ada@example.com" },
+  "createdAt": "2025-08-13T03:21:00.000Z"
+}
+```
+
+On POST success, the app calls `addBooking(saved)` to update state before navigating to confirmation.
+
+> **Note:** Nested JSON (intentional)  
+> `json-server` cannot filter nested arrays, so the app fetches once and resolves matches on the client:
+>
+> ```text
+> (origin, destination) → portPairId → quote → rates.find(r.containerId === selectedId)
+> ```
+
+## Build & Deploy
+
+```text
+npm run build
+```
+
+For Netlify + React Router, add `public/_redirects`:
+
+```text
+/*  /index.html  200
+```
+
+Set REACT_APP_API_URL in your hosting env for production.
