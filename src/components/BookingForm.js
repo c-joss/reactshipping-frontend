@@ -125,17 +125,34 @@ function BookingForm({ addBooking }) {
     containers,
   ]);
 
-  const canSubmit =
-    !!name &&
-    !!email &&
-    !!origin &&
-    !!destination &&
-    (!!containerType || containerId != null) &&
-    !!rate;
+  const validateMissing = () => {
+    const missing = [];
+    if (!name?.trim()) missing.push("Name");
+    if (!company?.trim()) missing.push("Company");
+    if (!email?.trim()) missing.push("Email");
+    if (!isPrefilled) {
+      if (!origin) missing.push("Origin");
+      if (!destination) missing.push("Destination");
+      if (!containerType && containerId == null) missing.push("Container");
+    }
+    return missing;
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!rate) return;
+
+    const missing = validateMissing();
+    if (missing.length) {
+      alert(`Please complete: ${missing.join(", ")}`);
+      return;
+    }
+
+    if (!rate) {
+      alert(
+        "No rate found for this selection. Please adjust your lane or container."
+      );
+      return;
+    }
 
     const cType =
       containerType ||
@@ -169,9 +186,11 @@ function BookingForm({ addBooking }) {
         navigate("/booking/confirmation", { state: saved });
       });
   };
+
   return (
     <div>
       <h1>Booking</h1>
+      <p className="help-text">All fields are required.</p>
 
       {isPrefilled ? (
         <div style={{ marginBottom: 12 }}>
@@ -209,9 +228,10 @@ function BookingForm({ addBooking }) {
         <div style={{ marginBottom: 12 }}>
           <div>
             <label>
-              Origin
+              <span className="label-text required">Origin</span>
               <select
                 value={origin}
+                required
                 onChange={(e) => {
                   setOrigin(e.target.value);
                   setDestination("");
@@ -229,11 +249,12 @@ function BookingForm({ addBooking }) {
 
           <div>
             <label>
-              Destination
+              <span className="label-text required">Destination</span>
               <select
                 value={destination}
-                onChange={(e) => setDestination(e.target.value)}
+                required={!!origin}
                 disabled={!origin}
+                onChange={(e) => setDestination(e.target.value)}
               >
                 <option value="">
                   {origin ? "Select destination…" : "Choose origin first"}
@@ -249,9 +270,10 @@ function BookingForm({ addBooking }) {
 
           <div>
             <label>
-              Container
+              <span className="label-text required">Container</span>
               <select
                 value={containerType}
+                required
                 onChange={(e) => {
                   setContainerType(e.target.value);
                   setContainerId(null);
@@ -293,9 +315,9 @@ function BookingForm({ addBooking }) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
+      <form noValidate>
         <label>
-          Name
+          <span className="label-text required">Name</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -305,16 +327,17 @@ function BookingForm({ addBooking }) {
         </label>
         <br />
         <label>
-          Company
+          <span className="label-text required">Company</span>
           <input
             value={company}
             onChange={(e) => setCompany(e.target.value)}
+            required
             type="text"
           />
         </label>
         <br />
         <label>
-          Email
+          <span className="label-text required">Email</span>
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -323,7 +346,7 @@ function BookingForm({ addBooking }) {
           />
         </label>
         <br />
-        <button type="submit" disabled={!canSubmit}>
+        <button type="button" onClick={handleSubmit}>
           Confirm Booking
         </button>
       </form>

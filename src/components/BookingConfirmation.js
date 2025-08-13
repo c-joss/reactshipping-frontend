@@ -10,29 +10,30 @@ function BookingConfirmation() {
 
   const name = state?.customer?.name ?? state?.customerName ?? "";
   const email = state?.customer?.email ?? state?.email ?? "";
+  const company = state?.customer?.company ?? state?.company ?? "";
 
   return (
-    <div>
-      <h1>Booking Requested</h1>
+    <div className="confirm-wrapper">
+      <div className="confirm-card">
+        <h1>Booking Requested</h1>
 
-      <p>
-        <strong>Name:</strong> {name}
-      </p>
-      <p>
-        <strong>Email:</strong> {email}
-      </p>
-      <p>
-        <strong>Origin:</strong> {origin}
-      </p>
-      <p>
-        <strong>Destination:</strong> {destination}
-      </p>
-      <p>
-        <strong>Container:</strong> {containerType}
-      </p>
-      <p>
-        <strong>Transit Time:</strong> {transitTime || "N/A"}
-      </p>
+        <div className="confirm-details">
+          <div className="label">Name:</div>
+          <div className="value">{name}</div>
+          <div className="label">Email:</div>
+          <div className="value">{email}</div>
+          <div className="label">Company:</div>
+          <div className="value">{company}</div>
+          <div className="label">Origin:</div>
+          <div className="value">{origin}</div>
+          <div className="label">Destination:</div>
+          <div className="value">{destination}</div>
+          <div className="label">Container:</div>
+          <div className="value">{containerType}</div>
+          <div className="label">Transit Time:</div>
+          <div className="value">{transitTime || "N/A"}</div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -82,44 +82,52 @@ function QuoteForm() {
     <form onSubmit={handleSubmit}>
       <h1>Get Quotes</h1>
 
+      <p className="help-text">All fields are required.</p>
+
       <fieldset>
-        <legend>Origin (multi-select)</legend>
-        {origins.map((o) => (
-          <label key={o} style={{ display: "block" }}>
+        <legend className="required">Origin (multi-select)</legend>
+        {origins.map((o, idx) => (
+          <label key={o} className="checkbox-row">
             <input
               type="checkbox"
+              name="origin"
+              required={selectedOrigin.length === 0 && idx === 0}
               checked={selectedOrigin.includes(o)}
               onChange={() => toggle(o, setSelectedOrigin)}
             />
-            {o}
+            <span>{o}</span>
           </label>
         ))}
       </fieldset>
 
       <fieldset>
-        <legend>Destination (multi-select)</legend>
-        {destinations.map((d) => (
-          <label key={d} style={{ display: "block" }}>
+        <legend className="required">Destination (multi-select)</legend>
+        {destinations.map((d, idx) => (
+          <label key={d} className="checkbox-row">
             <input
               type="checkbox"
+              name="destination"
+              required={selectedDestination.length === 0 && idx === 0}
               checked={selectedDestination.includes(d)}
               onChange={() => toggle(d, setSelectedDestination)}
             />
-            {d}
+            <span>{d}</span>
           </label>
         ))}
       </fieldset>
 
       <fieldset>
-        <legend>Container (multi-select)</legend>
-        {containers.map((c) => (
-          <label key={c.id} style={{ display: "block" }}>
+        <legend className="required">Container (multi-select)</legend>
+        {containers.map((c, idx) => (
+          <label key={c.id} className="checkbox-row">
             <input
               type="checkbox"
+              name="container"
+              required={selectedContainerIds.length === 0 && idx === 0}
               checked={selectedContainerIds.includes(c.id)}
               onChange={() => toggle(c.id, setSelectedContainerIds)}
             />
-            {c.type}
+            <span>{c.type}</span>
           </label>
         ))}
       </fieldset>
