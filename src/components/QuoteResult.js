@@ -1,23 +1,36 @@
-import { useLocation, Link } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 function QuoteResult() {
-  const { state } = useLocation() || {};
-  const {
-    quotes: navQuotes = [],
-    selectedContainerIds: navCids = [],
-    selectedOrigin = [],
-    selectedDestination = [],
-  } = state || {};
+  const location = useLocation();
+  const state = location?.state || null;
 
+  const initialQuotes = useMemo(
+    () => (Array.isArray(state?.quotes) ? state.quotes : []),
+    [state]
+  );
+  const selectedContainerIds = useMemo(
+    () =>
+      Array.isArray(state?.selectedContainerIds)
+        ? state.selectedContainerIds
+        : [],
+    [state]
+  );
+  const selectedOrigin = useMemo(
+    () => (Array.isArray(state?.selectedOrigin) ? state.selectedOrigin : []),
+    [state]
+  );
+  const selectedDestination = useMemo(
+    () =>
+      Array.isArray(state?.selectedDestination)
+        ? state.selectedDestination
+        : [],
+    [state]
+  );
+
+  const [quotes, setQuotes] = useState(initialQuotes);
   const [portPairs, setPortPairs] = useState([]);
   const [containers, setContainers] = useState([]);
-  const [quotes, setQuotes] = useState(navQuotes);
-
-  const selectedContainerIds = useMemo(
-    () => (navCids || []).map(Number),
-    [navCids]
-  );
 
   useEffect(() => {
     Promise.all([
@@ -25,18 +38,17 @@ function QuoteResult() {
       fetch(`${process.env.REACT_APP_API_URL}/containers`).then((r) =>
         r.json()
       ),
-    ]).then(([pp, cs]) => {
+      initialQuotes.length
+        ? Promise.resolve(initialQuotes)
+        : fetch(`${process.env.REACT_APP_API_URL}/quotes`).then((r) =>
+            r.json()
+          ),
+    ]).then(([pp, cs, qs]) => {
       setPortPairs(pp || []);
       setContainers(cs || []);
+      setQuotes(qs || []);
     });
-  }, []);
-
-  useEffect(() => {
-    if (navQuotes && navQuotes.length) return;
-    fetch(`${process.env.REACT_APP_API_URL}/quotes`)
-      .then((r) => r.json())
-      .then((all) => setQuotes(all || []));
-  }, [navQuotes]);
+  }, [initialQuotes]);
 
   const portPairById = useMemo(() => {
     const m = new Map();
@@ -51,13 +63,10 @@ function QuoteResult() {
   }, [containers]);
 
   const rows = useMemo(() => {
-    if (!quotes.length || !selectedContainerIds.length) return [];
     const out = [];
-
     for (const q of quotes) {
       const pair = portPairById.get(Number(q.portPairId));
       if (!pair) continue;
-
       if (selectedOrigin.length && !selectedOrigin.includes(pair.load))
         continue;
       if (
@@ -65,15 +74,12 @@ function QuoteResult() {
         !selectedDestination.includes(pair.destination)
       )
         continue;
-
       const rateList = Array.isArray(q.rates) ? q.rates : [];
-
       for (const cid of selectedContainerIds) {
         const rate = rateList.find(
           (r) => Number(r.containerId) === Number(cid)
         );
         if (!rate) continue;
-
         out.push({
           origin: pair.load,
           destination: pair.destination,
@@ -88,68 +94,77 @@ function QuoteResult() {
   }, [
     quotes,
     selectedContainerIds,
-    selectedOrigin,
-    selectedDestination,
     portPairById,
     containerById,
+    selectedOrigin,
+    selectedDestination,
   ]);
+
+  const [sortAsc, setSortAsc] = useState(true);
+  const sortedRows = useMemo(() => {
+    const copy = [...rows];
+    copy.sort((a, b) => {
+      const fa = Number(a.rate?.freight ?? Infinity);
+      const fb = Number(b.rate?.freight ?? Infinity);
+      return sortAsc ? fa - fb : fb - fa;
+    });
+    return copy;
+  }, [rows, sortAsc]);
 
   return (
     <div>
-      <h1>Quote Result</h1>
-
-      {rows.length === 0 ? (
-        <p>No matching rates. Try different selections.</p>
-      ) : (
-        <table border="1" cellPadding="8" cellSpacing="0">
-          <thead>
-            <tr>
-              <th>Origin</th>
-              <th>Destination</th>
-              <th>Container</th>
-              <th>Freight</th>
-              <th>THC</th>
-              <th>DOC</th>
-              <th>DHC</th>
-              <th>LSS</th>
-              <th>Transit</th>
-              <th></th>
+      <h1>Quote Results</h1>
+      <button onClick={() => setSortAsc((s) => !s)}>
+        Sort by Freight {sortAsc ? "↑" : "↓"}
+      </button>
+      <table>
+        <thead>
+          <tr>
+            <th>Origin</th>
+            <th>Destination</th>
+            <th>Container</th>
+            <th>Freight</th>
+            <th>THC</th>
+            <th>DOC</th>
+            <th>DHC</th>
+            <th>LSS</th>
+            <th>Transit</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {sortedRows.map((row, idx) => (
+            <tr
+              key={`${row.origin}-${row.destination}-${row.containerId}-${idx}`}
+            >
+              <td>{row.origin}</td>
+              <td>{row.destination}</td>
+              <td>{row.containerType}</td>
+              <td>${row.rate.freight ?? "N/A"}</td>
+              <td>${row.rate.thc ?? "N/A"}</td>
+              <td>${row.rate.doc ?? "N/A"}</td>
+              <td>${row.rate.dhc ?? "N/A"}</td>
+              <td>${row.rate.lss ?? "N/A"}</td>
+              <td>{row.transitTime}</td>
+              <td>
+                <Link
+                  to="/booking"
+                  state={{
+                    origin: row.origin,
+                    destination: row.destination,
+                    containerType: row.containerType,
+                    containerId: Number(row.containerId),
+                    rate: row.rate,
+                    transitTime: row.transitTime || "",
+                  }}
+                >
+                  Book Now
+                </Link>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, idx) => (
-              <tr
-                key={`${row.origin}-${row.destination}-${row.containerId}-${idx}`}
-              >
-                <td>{row.origin}</td>
-                <td>{row.destination}</td>
-                <td>{row.containerType}</td>
-                <td>${row.rate.freight ?? "N/A"}</td>
-                <td>${row.rate.thc ?? "N/A"}</td>
-                <td>${row.rate.doc ?? "N/A"}</td>
-                <td>${row.rate.dhc ?? "N/A"}</td>
-                <td>${row.rate.lss ?? "N/A"}</td>
-                <td>{row.transitTime}</td>
-                <td>
-                  <Link
-                    to="/booking"
-                    state={{
-                      origin: row.origin,
-                      destination: row.destination,
-                      containerType: row.containerType,
-                      containerId: Number(row.containerId),
-                      rate: row.rate,
-                      transitTime: row.transitTime || "",
-                    }}
-                  >
-                    Book Now
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
