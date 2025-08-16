@@ -7,6 +7,7 @@ import QuoteForm from "./components/QuoteForm";
 import QuoteResult from "./components/QuoteResult";
 import BookingForm from "./components/BookingForm";
 import BookingConfirmation from "./components/BookingConfirmation";
+import BookingsList from "./components/BookingsList";
 
 function App() {
   const [bookings, setBookings] = useState([]);
@@ -26,6 +27,10 @@ function App() {
           <Route
             path="/booking"
             element={<BookingForm addBooking={addBooking} />}
+          />
+          <Route
+            path="/bookings"
+            element={<BookingsList bookings={bookings} />}
           />
           <Route
             path="/booking/confirmation"
