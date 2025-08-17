@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { findRateForLane } from "../utils/rates";
+import { fetchJson } from "../utils/api";
 
 function BookingForm({ addBooking }) {
   const { state } = useLocation() || {};
@@ -29,11 +30,9 @@ function BookingForm({ addBooking }) {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${process.env.REACT_APP_API_URL}/portPairs`).then((r) => r.json()),
-      fetch(`${process.env.REACT_APP_API_URL}/containers`).then((r) =>
-        r.json()
-      ),
-      fetch(`${process.env.REACT_APP_API_URL}/quotes`).then((r) => r.json()),
+      fetchJson("/portPairs"),
+      fetchJson("/containers"),
+      fetchJson("/quotes"),
     ]).then(([pp, cs, qs]) => {
       setPortPairs(pp || []);
       setContainers(cs || []);

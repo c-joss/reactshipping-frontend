@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { fetchJson } from "../utils/api";
 
 function QuoteResult() {
   const location = useLocation();
@@ -34,15 +35,11 @@ function QuoteResult() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${process.env.REACT_APP_API_URL}/portPairs`).then((r) => r.json()),
-      fetch(`${process.env.REACT_APP_API_URL}/containers`).then((r) =>
-        r.json()
-      ),
+      fetchJson("/portPairs"),
+      fetchJson("/containers"),
       initialQuotes.length
         ? Promise.resolve(initialQuotes)
-        : fetch(`${process.env.REACT_APP_API_URL}/quotes`).then((r) =>
-            r.json()
-          ),
+        : fetchJson("/quotes"),
     ]).then(([pp, cs, qs]) => {
       setPortPairs(pp || []);
       setContainers(cs || []);

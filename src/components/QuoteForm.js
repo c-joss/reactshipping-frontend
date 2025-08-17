@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchJson } from "../utils/api";
 
 function QuoteForm() {
   const [portPairs, setPortPairs] = useState([]);
@@ -14,11 +15,9 @@ function QuoteForm() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${process.env.REACT_APP_API_URL}/portPairs`).then((r) => r.json()),
-      fetch(`${process.env.REACT_APP_API_URL}/containers`).then((r) =>
-        r.json()
-      ),
-      fetch(`${process.env.REACT_APP_API_URL}/quotes`).then((r) => r.json()),
+      fetchJson("/portPairs"),
+      fetchJson("/containers"),
+      fetchJson("/quotes"),
     ]).then(([pp, cs, qs]) => {
       setPortPairs(pp || []);
       setContainers(cs || []);
@@ -81,7 +80,6 @@ function QuoteForm() {
   return (
     <form onSubmit={handleSubmit}>
       <h1>Get Quotes</h1>
-
       <p className="help-text">All fields are required.</p>
 
       <fieldset>
