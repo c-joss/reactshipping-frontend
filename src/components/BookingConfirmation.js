@@ -10,6 +10,7 @@ function BookingConfirmation() {
   const name = state?.customer?.name ?? state?.customerName ?? "";
   const email = state?.customer?.email ?? state?.email ?? "";
   const company = state?.customer?.company ?? state?.company ?? "";
+  const nextBatch = Array.isArray(state?.nextBatch) ? state.nextBatch : [];
 
   return (
     <div className="confirm-wrapper">
@@ -31,6 +32,13 @@ function BookingConfirmation() {
           <div className="label">Transit Time:</div>
           <div className="value">{transitTime || "N/A"}</div>
         </div>
+        {nextBatch.length > 0 && (
+          <p>
+            <Link to="/booking" state={{ batch: nextBatch }}>
+              Book next selection
+            </Link>
+          </p>
+        )}
         <p>
           <Link to="/bookings">View all bookings</Link>
         </p>

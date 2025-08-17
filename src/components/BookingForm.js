@@ -1,24 +1,33 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { findRateForLane } from "../utils/rates";
-import { fetchJson } from "../utils/api";
 
 function BookingForm({ addBooking }) {
   const { state } = useLocation() || {};
   const navigate = useNavigate();
 
+  const batch = Array.isArray(state?.batch) ? state.batch : null;
+  const first = batch && batch.length ? batch[0] : null;
+  const remaining = batch && batch.length ? batch.slice(1) : [];
+
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
   const [email, setEmail] = useState("");
 
-  const [origin, setOrigin] = useState(state?.origin || "");
-  const [destination, setDestination] = useState(state?.destination || "");
-  const [containerType, setContainerType] = useState(
-    state?.containerType || ""
+  const [origin, setOrigin] = useState(first?.origin || state?.origin || "");
+  const [destination, setDestination] = useState(
+    first?.destination || state?.destination || ""
   );
-  const [containerId, setContainerId] = useState(state?.containerId ?? null);
-  const [rate, setRate] = useState(state?.rate || null);
-  const [transitTime, setTransitTime] = useState(state?.transitTime || "");
+  const [containerType, setContainerType] = useState(
+    first?.containerType || state?.containerType || ""
+  );
+  const [containerId, setContainerId] = useState(
+    first?.containerId ?? state?.containerId ?? null
+  );
+  const [rate, setRate] = useState(first?.rate || state?.rate || null);
+  const [transitTime, setTransitTime] = useState(
+    first?.transitTime || state?.transitTime || ""
+  );
 
   const isPrefilled = Boolean(
     origin && destination && (containerType || containerId != null)
@@ -30,9 +39,11 @@ function BookingForm({ addBooking }) {
 
   useEffect(() => {
     Promise.all([
-      fetchJson("/portPairs"),
-      fetchJson("/containers"),
-      fetchJson("/quotes"),
+      fetch(`${process.env.REACT_APP_API_URL}/portPairs`).then((r) => r.json()),
+      fetch(`${process.env.REACT_APP_API_URL}/containers`).then((r) =>
+        r.json()
+      ),
+      fetch(`${process.env.REACT_APP_API_URL}/quotes`).then((r) => r.json()),
     ]).then(([pp, cs, qs]) => {
       setPortPairs(pp || []);
       setContainers(cs || []);
@@ -151,7 +162,9 @@ function BookingForm({ addBooking }) {
       .then((r) => r.json())
       .then((saved) => {
         if (typeof addBooking === "function") addBooking(saved);
-        navigate("/booking/confirmation", { state: saved });
+        navigate("/booking/confirmation", {
+          state: { ...saved, nextBatch: remaining },
+        });
       });
   };
 

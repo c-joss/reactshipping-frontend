@@ -1,6 +1,6 @@
 # Freight Quotes — React SPA
 
-A React single-page app for ocean freight quotes and bookings.  
+A React single-page app for ocean freight quotes and bookings.
 
 ## Features
 
@@ -8,9 +8,11 @@ A React single-page app for ocean freight quotes and bookings.
 - Client-side join of nested data:  
   `(origin,destination) → portPairId → quote → rates[containerId]`
 - **Book Now** flow (prefilled booking) and **manual booking** from Home/Nav
+- **Select multiple results and Book Selected** to step through multiple bookings
 - All fields required with asterisks and custom validation alerts on submit
 - Persist booking (`POST /bookings`) and update app state on response
-- Routes: `/`, `/quote`, `/quote/result`, `/booking`, `/booking/confirmation`
+- Bookings index available at `/bookings` (link from confirmation)
+- Routes: `/`, `/quote`, `/quote/result`, `/booking`, `/booking/confirmation`, `/bookings`
 
 ## Tech
 
@@ -34,6 +36,10 @@ my-app/                  # React frontend (CRA)
       QuoteResult.js
       BookingForm.js
       BookingConfirmation.js
+      BookingsList.js
+    utils/
+      api.js             # fetchJson helper
+      rates.js           # findRateForLane()
     App.js
     App.css
     index.js
@@ -80,6 +86,25 @@ cd my-app
 npm install
 npm start             # http://localhost:3000
 ```
+
+---
+
+## Using the App
+
+1. Open Quote:
+   - Select one or more **Origins**, **Destinations**, and **Containers**
+   - Click **Show Quotes**
+
+2. On Quote Results:
+   - Use **Book Now** on a single row, or
+   - Tick checkboxes and click **Book Selected** to step through multiple bookings
+
+3. On Booking:
+   - If coming from Book Now or Book Selected, the lane and container are prefilled
+   - Fill Name, Company, Email and **Confirm Booking**
+   - On the confirmation screen, use **Book next selection** or **View all bookings**
+
+---
 
 ## API Overview (json-server)
 

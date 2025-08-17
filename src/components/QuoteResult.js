@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { fetchJson } from "../utils/api";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 function QuoteResult() {
   const location = useLocation();
+  const navigate = useNavigate();
   const state = location?.state || null;
 
   const initialQuotes = useMemo(
@@ -35,11 +35,15 @@ function QuoteResult() {
 
   useEffect(() => {
     Promise.all([
-      fetchJson("/portPairs"),
-      fetchJson("/containers"),
+      fetch(`${process.env.REACT_APP_API_URL}/portPairs`).then((r) => r.json()),
+      fetch(`${process.env.REACT_APP_API_URL}/containers`).then((r) =>
+        r.json()
+      ),
       initialQuotes.length
         ? Promise.resolve(initialQuotes)
-        : fetchJson("/quotes"),
+        : fetch(`${process.env.REACT_APP_API_URL}/quotes`).then((r) =>
+            r.json()
+          ),
     ]).then(([pp, cs, qs]) => {
       setPortPairs(pp || []);
       setContainers(cs || []);
@@ -108,15 +112,43 @@ function QuoteResult() {
     return copy;
   }, [rows, sortAsc]);
 
+  const [selectedKeys, setSelectedKeys] = useState(() => new Set());
+  const toggleRow = (key) =>
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  const selectedRows = useMemo(
+    () =>
+      sortedRows.filter((row, idx) =>
+        selectedKeys.has(
+          `${row.origin}-${row.destination}-${row.containerId}-${idx}`
+        )
+      ),
+    [sortedRows, selectedKeys]
+  );
+  const bookSelected = () => {
+    if (!selectedRows.length) return;
+    navigate("/booking", { state: { batch: selectedRows } });
+  };
+
   return (
     <div>
       <h1>Quote Results</h1>
-      <button onClick={() => setSortAsc((s) => !s)}>
-        Sort by Freight {sortAsc ? "↑" : "↓"}
-      </button>
+      <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
+        <button onClick={() => setSortAsc((s) => !s)}>
+          Sort by Freight {sortAsc ? "↑" : "↓"}
+        </button>
+        <button onClick={bookSelected} disabled={!selectedRows.length}>
+          Book Selected
+        </button>
+      </div>
       <table>
         <thead>
           <tr>
+            <th>Select</th>
             <th>Origin</th>
             <th>Destination</th>
             <th>Container</th>
@@ -130,36 +162,44 @@ function QuoteResult() {
           </tr>
         </thead>
         <tbody>
-          {sortedRows.map((row, idx) => (
-            <tr
-              key={`${row.origin}-${row.destination}-${row.containerId}-${idx}`}
-            >
-              <td>{row.origin}</td>
-              <td>{row.destination}</td>
-              <td>{row.containerType}</td>
-              <td>${row.rate.freight ?? "N/A"}</td>
-              <td>${row.rate.thc ?? "N/A"}</td>
-              <td>${row.rate.doc ?? "N/A"}</td>
-              <td>${row.rate.dhc ?? "N/A"}</td>
-              <td>${row.rate.lss ?? "N/A"}</td>
-              <td>{row.transitTime}</td>
-              <td>
-                <Link
-                  to="/booking"
-                  state={{
-                    origin: row.origin,
-                    destination: row.destination,
-                    containerType: row.containerType,
-                    containerId: Number(row.containerId),
-                    rate: row.rate,
-                    transitTime: row.transitTime || "",
-                  }}
-                >
-                  Book Now
-                </Link>
-              </td>
-            </tr>
-          ))}
+          {sortedRows.map((row, idx) => {
+            const key = `${row.origin}-${row.destination}-${row.containerId}-${idx}`;
+            return (
+              <tr key={key}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selectedKeys.has(key)}
+                    onChange={() => toggleRow(key)}
+                  />
+                </td>
+                <td>{row.origin}</td>
+                <td>{row.destination}</td>
+                <td>{row.containerType}</td>
+                <td>${row.rate.freight ?? "N/A"}</td>
+                <td>${row.rate.thc ?? "N/A"}</td>
+                <td>${row.rate.doc ?? "N/A"}</td>
+                <td>${row.rate.dhc ?? "N/A"}</td>
+                <td>${row.rate.lss ?? "N/A"}</td>
+                <td>{row.transitTime}</td>
+                <td>
+                  <Link
+                    to="/booking"
+                    state={{
+                      origin: row.origin,
+                      destination: row.destination,
+                      containerType: row.containerType,
+                      containerId: Number(row.containerId),
+                      rate: row.rate,
+                      transitTime: row.transitTime || "",
+                    }}
+                  >
+                    Book Now
+                  </Link>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
