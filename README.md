@@ -92,10 +92,12 @@ npm start             # http://localhost:3000
 ## Using the App
 
 1. Open Quote:
+
    - Select one or more **Origins**, **Destinations**, and **Containers**
    - Click **Show Quotes**
 
 2. On Quote Results:
+
    - Use **Book Now** on a single row, or
    - Tick checkboxes and click **Book Selected** to step through multiple bookings
 
@@ -143,7 +145,11 @@ Top-level routes from db.json:
   "containerType": "40GP",
   "transitTime": "18d",
   "charges": { "freight": 1234, "thc": 100, "doc": 50, "dhc": 90, "lss": 25 },
-  "customer": { "name": "Ada Lovelace", "company": "Analytical Engines", "email": "ada@example.com" },
+  "customer": {
+    "name": "Ada Lovelace",
+    "company": "Analytical Engines",
+    "email": "ada@example.com"
+  },
   "createdAt": "2025-08-13T03:21:00.000Z"
 }
 ```

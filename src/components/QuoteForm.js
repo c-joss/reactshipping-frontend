@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchJson } from "../utils/api";
+import { api } from "../utils/api";
 
 function QuoteForm() {
   const [portPairs, setPortPairs] = useState([]);
@@ -14,15 +14,27 @@ function QuoteForm() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let isMounted = true;
     Promise.all([
-      fetchJson("/portPairs"),
-      fetchJson("/containers"),
-      fetchJson("/quotes"),
-    ]).then(([pp, cs, qs]) => {
-      setPortPairs(pp || []);
-      setContainers(cs || []);
-      setQuotes(qs || []);
-    });
+      api.get("/portPairs"),
+      api.get("/containers"),
+      api.get("/quotes"),
+    ])
+      .then(([pp, cs, qs]) => {
+        if (!isMounted) return;
+        setPortPairs(Array.isArray(pp) ? pp : []);
+        setContainers(Array.isArray(cs) ? cs : []);
+        setQuotes(Array.isArray(qs) ? qs : []);
+      })
+      .catch((err) => {
+        console.error("Failed to load initial data", err);
+        setPortPairs([]);
+        setContainers([]);
+        setQuotes([]);
+      });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const origins = useMemo(
@@ -52,8 +64,9 @@ function QuoteForm() {
     e.preventDefault();
 
     const odPairs = [];
-    for (const o of selectedOrigin)
+    for (const o of selectedOrigin) {
       for (const d of selectedDestination) odPairs.push([o, d]);
+    }
 
     const picked = [];
     const seen = new Set();

@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { findRateForLane } from "../utils/rates";
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { findRateForLane } from '../utils/rates';
+import { api } from '../utils/api';
 
 function BookingForm({ addBooking }) {
   const { state } = useLocation() || {};
@@ -10,45 +11,33 @@ function BookingForm({ addBooking }) {
   const first = batch && batch.length ? batch[0] : null;
   const remaining = batch && batch.length ? batch.slice(1) : [];
 
-  const [name, setName] = useState("");
-  const [company, setCompany] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState('');
+  const [company, setCompany] = useState('');
+  const [email, setEmail] = useState('');
 
-  const [origin, setOrigin] = useState(first?.origin || state?.origin || "");
-  const [destination, setDestination] = useState(
-    first?.destination || state?.destination || ""
-  );
+  const [origin, setOrigin] = useState(first?.origin || state?.origin || '');
+  const [destination, setDestination] = useState(first?.destination || state?.destination || '');
   const [containerType, setContainerType] = useState(
-    first?.containerType || state?.containerType || ""
+    first?.containerType || state?.containerType || '',
   );
-  const [containerId, setContainerId] = useState(
-    first?.containerId ?? state?.containerId ?? null
-  );
+  const [containerId, setContainerId] = useState(first?.containerId ?? state?.containerId ?? null);
   const [rate, setRate] = useState(first?.rate || state?.rate || null);
-  const [transitTime, setTransitTime] = useState(
-    first?.transitTime || state?.transitTime || ""
-  );
+  const [transitTime, setTransitTime] = useState(first?.transitTime || state?.transitTime || '');
 
-  const isPrefilled = Boolean(
-    origin && destination && (containerType || containerId != null)
-  );
+  const isPrefilled = Boolean(origin && destination && (containerType || containerId != null));
 
   const [portPairs, setPortPairs] = useState([]);
   const [containers, setContainers] = useState([]);
   const [quotes, setQuotes] = useState([]);
 
   useEffect(() => {
-    Promise.all([
-      fetch(`${process.env.REACT_APP_API_URL}/portPairs`).then((r) => r.json()),
-      fetch(`${process.env.REACT_APP_API_URL}/containers`).then((r) =>
-        r.json()
-      ),
-      fetch(`${process.env.REACT_APP_API_URL}/quotes`).then((r) => r.json()),
-    ]).then(([pp, cs, qs]) => {
-      setPortPairs(pp || []);
-      setContainers(cs || []);
-      setQuotes(qs || []);
-    });
+    Promise.all([api.get('/portPairs'), api.get('/containers'), api.get('/quotes')]).then(
+      ([pp, cs, qs]) => {
+        setPortPairs(pp || []);
+        setContainers(cs || []);
+        setQuotes(qs || []);
+      },
+    );
   }, []);
 
   useEffect(() => {
@@ -68,9 +57,8 @@ function BookingForm({ addBooking }) {
       containers,
     });
     setRate(foundRate || null);
-    setTransitTime(tt || "");
-    if (containerId == null && resolvedContainerId != null)
-      setContainerId(resolvedContainerId);
+    setTransitTime(tt || '');
+    if (containerId == null && resolvedContainerId != null) setContainerId(resolvedContainerId);
   }, [
     origin,
     destination,
@@ -83,41 +71,34 @@ function BookingForm({ addBooking }) {
     transitTime,
   ]);
 
-  const origins = useMemo(
-    () => [...new Set(portPairs.map((p) => p.load))],
-    [portPairs]
-  );
+  const origins = useMemo(() => [...new Set(portPairs.map((p) => p.load))], [portPairs]);
 
   const destinations = useMemo(() => {
     if (!origin) return [...new Set(portPairs.map((p) => p.destination))];
-    return [
-      ...new Set(
-        portPairs.filter((p) => p.load === origin).map((p) => p.destination)
-      ),
-    ];
+    return [...new Set(portPairs.filter((p) => p.load === origin).map((p) => p.destination))];
   }, [portPairs, origin]);
 
   const containerOptions = useMemo(
     () => containers.map((c) => ({ id: c.id, type: c.type })),
-    [containers]
+    [containers],
   );
 
   const displayContainerType = useMemo(() => {
     if (containerType) return containerType;
     const found = containers.find((c) => Number(c.id) === Number(containerId));
     if (found?.type) return found.type;
-    return containerId != null ? `#${containerId}` : "";
+    return containerId != null ? `#${containerId}` : '';
   }, [containerType, containers, containerId]);
 
   const validateMissing = () => {
     const missing = [];
-    if (!name?.trim()) missing.push("Name");
-    if (!company?.trim()) missing.push("Company");
-    if (!email?.trim()) missing.push("Email");
+    if (!name?.trim()) missing.push('Name');
+    if (!company?.trim()) missing.push('Company');
+    if (!email?.trim()) missing.push('Email');
     if (!isPrefilled) {
-      if (!origin) missing.push("Origin");
-      if (!destination) missing.push("Destination");
-      if (!containerType && containerId == null) missing.push("Container");
+      if (!origin) missing.push('Origin');
+      if (!destination) missing.push('Destination');
+      if (!containerType && containerId == null) missing.push('Container');
     }
     return missing;
   };
@@ -126,24 +107,20 @@ function BookingForm({ addBooking }) {
     e.preventDefault();
     const missing = validateMissing();
     if (missing.length) {
-      alert(`Please complete: ${missing.join(", ")}`);
+      alert(`Please complete: ${missing.join(', ')}`);
       return;
     }
     if (!rate) {
-      alert(
-        "No rate found for this selection. Please adjust your lane or container."
-      );
+      alert('No rate found for this selection. Please adjust your lane or container.');
       return;
     }
     const resolvedType =
-      containerType ||
-      containers.find((c) => Number(c.id) === Number(containerId))?.type ||
-      "";
+      containerType || containers.find((c) => Number(c.id) === Number(containerId))?.type || '';
     const booking = {
       origin,
       destination,
       containerType: resolvedType,
-      transitTime: transitTime || "N/A",
+      transitTime: transitTime || 'N/A',
       charges: {
         freight: rate.freight ?? null,
         thc: rate.thc ?? null,
@@ -154,18 +131,13 @@ function BookingForm({ addBooking }) {
       customer: { name, company, email },
       createdAt: new Date().toISOString(),
     };
-    fetch(`${process.env.REACT_APP_API_URL}/bookings`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(booking),
-    })
-      .then((r) => r.json())
-      .then((saved) => {
-        if (typeof addBooking === "function") addBooking(saved);
-        navigate("/booking/confirmation", {
-          state: { ...saved, nextBatch: remaining },
-        });
+
+    api.post('/bookings', booking).then((saved) => {
+      if (typeof addBooking === 'function') addBooking(saved);
+      navigate('/booking/confirmation', {
+        state: { ...saved, nextBatch: remaining },
       });
+    });
   };
 
   return (
@@ -184,13 +156,13 @@ function BookingForm({ addBooking }) {
             <strong>Container:</strong> {displayContainerType}
           </p>
           <p>
-            <strong>Transit Time:</strong> {transitTime || "N/A"}
+            <strong>Transit Time:</strong> {transitTime || 'N/A'}
           </p>
           <p>
-            <strong>Charges:</strong>{" "}
+            <strong>Charges:</strong>{' '}
             {rate
               ? `$${rate.freight} Freight, $${rate.thc} THC, $${rate.doc} DOC, $${rate.dhc} DHC, $${rate.lss} LSS`
-              : "Looking up..."}
+              : 'Looking up.'}
           </p>
         </div>
       ) : (
@@ -201,7 +173,7 @@ function BookingForm({ addBooking }) {
               value={origin}
               onChange={(e) => {
                 setOrigin(e.target.value);
-                setDestination("");
+                setDestination('');
                 setRate(null);
               }}
             >
@@ -233,10 +205,10 @@ function BookingForm({ addBooking }) {
           <div>
             <label>Container</label>
             <select
-              value={containerId ?? ""}
+              value={containerId ?? ''}
               onChange={(e) => {
                 setContainerId(e.target.value ? Number(e.target.value) : null);
-                setContainerType("");
+                setContainerType('');
                 setRate(null);
               }}
             >
@@ -250,17 +222,15 @@ function BookingForm({ addBooking }) {
           </div>
           <div>
             <p>
-              <strong>Transit Time:</strong> {transitTime || ""}
+              <strong>Transit Time:</strong> {transitTime || ''}
             </p>
             <p>
-              <strong>Charges:</strong>{" "}
+              <strong>Charges:</strong>{' '}
               {rate
                 ? `$${rate.freight} Freight, $${rate.thc} THC, $${rate.doc} DOC, $${rate.dhc} DHC, $${rate.lss} LSS`
-                : origin &&
-                  destination &&
-                  (containerType || containerId != null)
-                ? "No rate found"
-                : ""}
+                : origin && destination && (containerType || containerId != null)
+                ? 'No rate found'
+                : ''}
             </p>
           </div>
         </div>

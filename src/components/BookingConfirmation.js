@@ -1,15 +1,15 @@
-import React from "react";
-import { useLocation, Link } from "react-router-dom";
+import React from 'react';
+import { useLocation, Link } from 'react-router-dom';
 
 function BookingConfirmation() {
   const { state } = useLocation() || {};
-  const origin = state?.origin || "";
-  const destination = state?.destination || "";
-  const containerType = state?.containerType || "";
-  const transitTime = state?.transitTime || "";
-  const name = state?.customer?.name ?? state?.customerName ?? "";
-  const email = state?.customer?.email ?? state?.email ?? "";
-  const company = state?.customer?.company ?? state?.company ?? "";
+  const origin = state?.origin || '';
+  const destination = state?.destination || '';
+  const containerType = state?.containerType || '';
+  const transitTime = state?.transitTime || '';
+  const name = state?.customer?.name ?? state?.customerName ?? '';
+  const email = state?.customer?.email ?? state?.email ?? '';
+  const company = state?.customer?.company ?? state?.company ?? '';
   const nextBatch = Array.isArray(state?.nextBatch) ? state.nextBatch : [];
 
   return (
@@ -30,7 +30,7 @@ function BookingConfirmation() {
           <div className="label">Container:</div>
           <div className="value">{containerType}</div>
           <div className="label">Transit Time:</div>
-          <div className="value">{transitTime || "N/A"}</div>
+          <div className="value">{transitTime || 'N/A'}</div>
         </div>
         {nextBatch.length > 0 && (
           <p>
